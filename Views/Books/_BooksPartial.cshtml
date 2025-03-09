@@ -1,0 +1,13 @@
+﻿@model IEnumerable<Book>
+@foreach (var book in Model)
+{
+    <tr class="bookRow" data-index="@book.Index">
+        <td>@book.Index</td>
+        <td>@book.ISBN</td>
+        <td>@book.Title</td>
+        <td>@book.Authors</td>
+        <td>@book.Publisher</td>
+        <td>@book.Likes</td>
+        <td>@book.Reviews</td>
+    </tr>
+}

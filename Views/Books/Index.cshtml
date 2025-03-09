@@ -1,0 +1,176 @@
+﻿@model Task5.Models.BooksViewModel
+@{
+    ViewData["Title"] = "Генерация книг";
+}
+
+<h2 class="mb-4">Génération de livres</h2>
+
+<!-- Блок с параметрами (locale, seed, likes, reviews) -->
+<div class="row mb-3">
+    <div class="col-md-2">
+        <label class="form-label">Locale</label>
+        <select id="locale" class="form-select">
+            @if (Model.Locale == "en_US")
+            {
+                <option value="en_US" selected>USA (en_US)</option>
+            }
+            else
+            {
+                <option value="en_US">USA (en_US)</option>
+            }
+
+            @if (Model.Locale == "de")
+            {
+                <option value="de" selected>Germany (de)</option>
+            }
+            else
+            {
+                <option value="de">Germany (de)</option>
+            }
+
+            @if (Model.Locale == "fr")
+            {
+                <option value="fr" selected>France (fr)</option>
+            }
+            else
+            {
+                <option value="fr">France (fr)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Seed</label>
+        <div class="input-group">
+            <input type="number" id="userSeed" class="form-control" value="@Model.UserSeed" />
+            <button id="randomSeed" class="btn btn-dark" title="Generate random seed">🔀</button>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Likes</label>
+        <div class="d-flex align-items-center">
+            <input type="range" id="avgLikes" min="0" max="10" step="0.1" value="@Model.AvgLikes" class="form-range me-2" />
+            <span id="avgLikesValue" style="width: 2.5rem;">@Model.AvgLikes</span>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Reviews</label>
+        <input type="number" id="avgReviews" step="0.1" value="@Model.AvgReviews" class="form-control" />
+    </div>
+</div>
+
+<!-- Таблица -->
+<div class="table-responsive">
+    <table class="table table-hover align-middle" id="booksTable">
+        <thead>
+            <tr>
+                <th>ISBN</th>
+                <th>Title</th>
+                <th>Author(s)</th>
+                <th>Likes</th>
+                <th>Reviews</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in Model.Books)
+            {
+                <tr class="bookRow" data-index="@book.Index">
+                    <td>@book.ISBN</td>
+                    <td>@book.Title</td>
+                    <td>@book.Authors</td>
+                    <td>@book.Likes</td>
+                    <td>@book.Reviews</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Индикатор загрузки -->
+<div id="loading" class="text-center mt-3" style="display:none;">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let currentPage = @Model.PageNumber;
+
+        // Функция для подгрузки данных
+        function loadBooks(reset = false) {
+            if (reset) {
+                currentPage = 1;
+                $("#booksTable tbody").empty();
+            }
+            $("#loading").show();
+            $.get('@Url.Action("LoadMore", "Books")', {
+                locale: $("#locale").val(),
+                userSeed: $("#userSeed").val(),
+                avgLikes: $("#avgLikes").val(),
+                avgReviews: $("#avgReviews").val(),
+                pageNumber: currentPage
+            }).done(function (data) {
+                $("#booksTable tbody").append(data);
+                currentPage++;
+            }).always(function() {
+                $("#loading").hide();
+            });
+        }
+
+        // Обновление таблицы при изменении контролов
+        $("#locale, #userSeed, #avgLikes, #avgReviews").on("change input", function () {
+            $("#avgLikesValue").text($("#avgLikes").val());
+            loadBooks(true);
+        });
+
+        // Генерация случайного seed
+        $("#randomSeed").on("click", function () {
+            let randomSeed = Math.floor(Math.random() * 1000000);
+            $("#userSeed").val(randomSeed);
+            loadBooks(true);
+        });
+
+        // Бесконечная прокрутка
+        $(window).scroll(function () {
+            if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                loadBooks(false);
+            }
+        });
+
+        // При клике на строку книги показываем/скрываем детальный блок
+        $(document).on("click", ".bookRow", function () {
+            const $row = $(this);
+            const index = $row.data("index");
+
+            let $detailRow = $row.next(".detailRow");
+            if ($detailRow.length > 0) {
+                $detailRow.toggle();
+                return;
+            }
+
+            const coverUrl = "https://picsum.photos/seed/" + index + "/400/300";
+            const detailHtml = `
+                <tr class="detailRow">
+                    <td colspan="5">
+                        <div class="card" style="margin-bottom: 1rem;">
+                            <div class="row g-0">
+                                <div class="col-md-4">
+                                    <img src="${coverUrl}" class="img-fluid rounded-start" alt="Cover">
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="card-body">
+                                        <h5 class="card-title">More about book #${index}</h5>
+                                        <p class="card-text">Some additional info about this book...</p>
+                                        <p class="card-text"><small class="text-muted">Reviews go here</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            $row.after(detailHtml);
+        });
+    </script>
+}
